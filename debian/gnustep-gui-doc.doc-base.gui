@@ -1,0 +1,13 @@
+Document: gnustep-gui-reference
+Title: GNUstep GUI Library API Reference
+Author: Richard Frith-Macdonald
+Abstract: The GNUstep GUI library is a free software package
+ implementing the API of the OpenStep Application Kit (tm), including
+ later additions.  This documentation package describes the core of
+ the Base library, for documentation on additional classes, see the
+ GuiAdditions documentation package.
+Section: Programming/Objective-C
+
+Format: HTML
+Index: /usr/share/GNUstep/Documentation/Developer/Gui/Reference/index.html
+Files: /usr/share/GNUstep/Documentation/Developer/Gui/Reference/*.html

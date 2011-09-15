@@ -1,0 +1,20 @@
+2011-09-15  Yavor Doganov  <yavor@gnu.org>
+
+	* Tools/say/GNUmakefile (say_OBJCFLAGS): Remove `-g -Werror'.
+	(say_OBJCFLAGS): Replace with...
+	(ADDITIONAL_TOOL_LIBS): ...; fixes FTBFS with ld --as-needed.
+
+
+--- gnustep-gui.orig/Tools/say/GNUmakefile
++++ gnustep-gui/Tools/say/GNUmakefile
+@@ -17,8 +17,8 @@
+ say_LIB_DIRS += -L../../Source/$(GNUSTEP_OBJ_DIR) \
+ 	-L/usr/local/lib 
+ 
+-say_OBJCFLAGS += -std=c99 -g -Werror
+-say_LDFLAGS += -lgnustep-gui
++say_OBJCFLAGS += -std=c99
++ADDITIONAL_TOOL_LIBS = -lgnustep-gui
+ 
+ -include GNUmakefile.preamble
+ include $(GNUSTEP_MAKEFILES)/tool.make

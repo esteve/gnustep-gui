@@ -1,0 +1,66 @@
+This package was debianized by Gregor Hoffleit <flight@hoffleit.org> and
+Matthias Klose <doko@cs.tu-berlin.de> on Thu, 5 Nov 1998 17:18:55 +0100.
+
+It was downloaded from 
+ftp://ftp.gnustep.org/pub/gnustep/core/gnustep-gui-X.Y.Z.tar.gz
+
+Upstream Authors: See the GNUstep Project Page at 
+http://savannah.gnu.org/projects/gnustep/
+
+Copyright 2002-2011 Free Software Foundation
+
+License:
+   
+The GNUstep libraries are covered under the GNU Lesser Public License.
+This means you can use these libraries in any program (even non-free
+programs). If you distribute the libraries along with your program,
+you must make the improvements you have made to the libraries freely
+available.
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+
+GNUstep tools, test programs, and other files are covered under the
+GNU General Public License.  The GNU GPL is a free software license,
+which requires that all the released improved versions be free
+software as well.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this library; see the file COPYING.  If not, see
+    <http://www.gnu.org/licenses/> or write to the Free Software
+    Foundation, 51 Franklin Street, Fifth Floor, Boston, MA
+    02110-1301, USA.
+
+On Debian GNU/Linux systems, the complete text of version 3 of the GNU
+General Public License can be found in
+`/usr/share/common-licenses/GPL-3', and the latest version of the GNU
+General Public License can be found in
+`/usr/share/commot-licenses/GPL'.  The complete text of version 2.1 of
+the GNU Lesser General Public License can be fouund in
+`/usr/share/common-licenses/LGPL-2.1', and the latest version can be
+found in `/usr/share/common-licenses/LGPL'.
+
+Note that the custom license used for images listed in
+Images/GNUstep_Images_Copyright has been replaced by the GPL as per:
+http://lists.gnu.org/archive/html/gnustep-dev/2008-06/msg00096.html

@@ -1,0 +1,412 @@
+#! /usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# we're using brace expansion
+export SHELL=/bin/bash
+
+##### VERSION NUMBERS ###########################################
+
+# GNUstep Base version :
+v_base	:= 1.22.1
+
+# GNUstep Gui version :
+v_gui   := $(shell . ./Version; echo $$VERSION)
+
+# GNUstep Gui SONAME version :
+sov_gui	:= $(shell . ./Version; echo $$GNUSTEP_GUI_MAJOR_VERSION.$$GNUSTEP_GUI_MINOR_VERSION)
+
+#################################################################
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_BUILD_GNU_TYPE	?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+DEB_HOST_GNU_TYPE	?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_HOST_ARCH		?= $(shell dpkg-architecture -qDEB_HOST_ARCH)
+
+# make some files executable
+dummy := $(shell chmod +x configure)
+
+# package names
+p_com		= gnustep-gui-common
+p_run		= gnustep-gui-runtime
+p_lib		= libgnustep-gui$(sov_gui)
+p_dev		= libgnustep-gui-dev
+p_dbg		= $(p_lib)-dbg
+p_doc		= gnustep-gui-doc
+
+# package temp dirs
+d_com		= $(CURDIR)/debian/$(p_com)
+d_run		= $(CURDIR)/debian/$(p_run)
+d_lib		= $(CURDIR)/debian/$(p_lib)
+d_dev		= $(CURDIR)/debian/$(p_dev)
+d_dbg		= $(CURDIR)/debian/$(p_dbg)
+d_doc		= $(CURDIR)/debian/$(p_doc)
+
+# -----------------------------------------------------------------------------
+# GNUstep SETTINGS
+include /usr/share/quilt/quilt.make
+include /usr/share/GNUstep/debian/config.mk
+
+export GNUSTEP_MAKEFILES := /usr/share/GNUstep/Makefiles
+export GNUSTEP_INSTALLATION_DOMAIN := SYSTEM
+
+# Compiler
+CC	:= $(shell sed -n -e '/^CC[ 	]*=/s,.*= *\(.*\),\1,p' \
+		/$(GS_MAKE_DIR)/config.make)
+
+LDFLAGS := -Wl,-z,defs -Wl,--as-needed
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+optim := debug=yes
+endif
+
+# -----------------------------------------------------------------------------
+
+version:
+	echo "Base : $(v_base)"
+	echo "Gui : $(v_gui)"
+	echo "Gui soname version : $(sov_gui)"
+
+control-file: debian/control
+debian/control: debian/control.m4
+	m4 \
+	    -DV_BASE='$(v_base)' \
+	    -DV_GUI='$(v_gui)' \
+	    -DSOV_GUI='$(sov_gui)' \
+	  debian/control.m4 | uniq > debian/control
+
+# Generate the lintian overrides file automatically, to avoid renames
+# when the SONAME is bumped.
+clean_files += debian/libgnustep-gui$(sov_gui).lintian-overrides
+debian/libgnustep-gui$(sov_gui).lintian-overrides: debian/libgnustep-guiN.overrides.m4
+	m4 -DSOV_GUI='$(sov_gui)' $< > $@
+
+config: debian/configure-stamp
+clean_files += debian/configure-stamp
+
+debian/configure-stamp: configure
+	dh_testdir
+	CC=$(CC) ./configure \
+	    --build=$(DEB_BUILD_GNU_TYPE) \
+	    --host=$(DEB_HOST_GNU_TYPE) \
+	    --target=$(DEB_HOST_GNU_TYPE) \
+	    --with-x \
+	    --x-libraries=/usr/X11R6/lib \
+	    --x-includes=/usr/X11R6/include
+
+	touch $@
+
+build-shared: debian/build-shared-stamp
+clean_files += debian/build-shared-stamp
+debian/build-shared-stamp: config
+	dh_testdir
+	$(MAKE) doc=no messages=yes $(optim) LDFLAGS="$(LDFLAGS)"
+
+	touch $@
+
+
+build: patch build-arch
+
+# Build architecture indep
+build-indep: debian/build-indep-stamp
+clean_files += debian/build-indep-stamp
+debian/build-indep-stamp: build-shared
+	dh_testdir
+	$(MAKE) -C Documentation doc=yes messages=yes
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	$(MAKE) check
+endif
+	touch $@
+
+# Build architecture dep
+build-arch: build-shared build-static
+
+build-debug: debian/build-debug-stamp
+clean_files += debian/build-debug-stamp
+debian/build-debug-stamp: config
+	touch $@
+
+build-static: debian/build-static-stamp
+clean_files += debian/build-static-stamp
+debian/build-static-stamp: config
+	$(MAKE) -C Source shared=no doc=no messages=yes $(optim) \
+	  LDFLAGS="$(LDFLAGS)"
+
+	touch $@
+
+# Install all
+install: install-indep install-arch
+
+# Install architecture indep
+install-indep: install-doc install-common
+
+install-doc: build-indep
+	dh_testdir
+	dh_testroot
+	dh_prep -p$(p_doc)
+	dh_installdirs -p$(p_doc)
+
+	: # Install the indep part of the package
+	$(MAKE) -C Documentation install doc=yes DESTDIR=$(d_doc)
+
+	: # remove postscript doc
+	for file in `find $(d_doc)/$(GNUSTEP_SYSTEM_DOC) -name "*.ps"`; do \
+	  rm $$file ; done
+
+	: # remove info doc
+	rm -rf $(d_doc)/$(GNUSTEP_SYSTEM_DOC_INFO)
+
+	: # /usr/share/doc symlinks
+	dh_link -p$(p_doc) \
+	    $(GNUSTEP_SYSTEM_DOC)/Developer usr/share/doc/$(p_com)/Developer \
+	    usr/share/doc/$(p_com)/Developer usr/share/doc/$(p_doc)/Developer \
+	    $(GNUSTEP_SYSTEM_DOC)/User usr/share/doc/$(p_com)/User \
+	    usr/share/doc/$(p_com)/User usr/share/doc/$(p_doc)/User
+
+	: # clean
+	for file in `find $(d_doc)/$(GNUSTEP_SYSTEM_DOC) -name ".cvsignore"`; do \
+		rm $$file ; done
+
+	dh_install -i
+
+install-common: install-shared
+	@: # The files actually get installed in install-shared
+	@: # so we don't actually have anything to do here
+
+# Install architecture dep
+install-arch: install-shared install-static install-debug
+
+install-shared: build-shared
+	dh_testdir -p$(p_run)
+	dh_testroot -p$(p_run)
+	dh_prep -p$(p_run)
+	dh_installdirs -p$(p_run)
+
+	@: # install shared version of libraries
+	$(MAKE) install doc=no DESTDIR=$(d_run)
+
+	@: # remove Makefiles/Additional/gui.make
+	rm -rf $(d_run)/$(GS_MAKE_DIR)
+
+# Move arch-indep things to -common.
+	dh_prep -p$(p_com)
+	dh_installdirs -p$(p_com)
+	mkdir -p $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/Libraries
+	mv $(d_run)/$(GNUSTEP_SYSTEM_LIBRARY)/Libraries/gnustep-gui \
+	  $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/Libraries
+	mv $(d_run)/$(GNUSTEP_SYSTEM_LIBRARY)/Images \
+	  $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/Images
+	mv $(d_run)/$(GNUSTEP_SYSTEM_LIBRARY)/Sounds \
+	  $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/Sounds
+	mv $(d_run)/$(GNUSTEP_SYSTEM_LIBRARY)/KeyBindings \
+	  $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/KeyBindings
+	mv $(d_run)/$(GNUSTEP_SYSTEM_LIBRARY)/PostScript \
+	  $(d_com)/$(GNUSTEP_SYSTEM_LIBRARY)/PostScript
+
+	@: # remove headers from shared packages
+	rm -rf $(d_run)/$(GNUSTEP_SYSTEM_HEADERS)
+
+	@: # Move shared lib 
+	dh_install -p$(p_lib) \
+	    debian/$(p_run)/$(GNUSTEP_SYSTEM_LIBRARIES)/lib*.so.* $(GNUSTEP_SYSTEM_LIBRARIES)
+	rm -rf debian/$(p_run)/$(GNUSTEP_SYSTEM_LIBRARIES)/lib*
+
+	@: # Doc symlinks
+	dh_link -p$(p_lib) usr/share/doc/$(p_com) usr/share/doc/$(p_lib)
+	dh_link -p$(p_run) usr/share/doc/$(p_com) usr/share/doc/$(p_run)
+
+# Delete useless file that trigger a lintian warning.
+	$(RM) $(d_run)$(GNUSTEP_SYSTEM_APPS)/GSSpeechServer.app/Resources/GSSpeechServer.desktop
+
+
+install-static: build-static
+	dh_testdir -p$(p_dev)
+	dh_testroot -p$(p_dev)
+	dh_installdirs -p$(p_dev)
+	dh_prep -p$(p_dev)
+
+	: # install static version of libraries
+	$(MAKE) SUBPROJECTS=Source install shared=no doc=no DESTDIR=$(d_dev)
+
+	: # Install gui.make here (instead of in -runtime)
+	install -m 644 -D gui.make $(d_dev)/$(GS_MAKE_DIR)/Additional/gui.make
+
+	: # Development symlink
+	dh_link -p$(p_dev) $(GNUSTEP_SYSTEM_LIBRARIES)/libgnustep-gui.so.$(sov_gui) \
+	    $(GNUSTEP_SYSTEM_LIBRARIES)/libgnustep-gui.so
+
+	: # Remove Resources dir
+	rm -rf $(d_dev)/$(GNUSTEP_SYSTEM_LIBRARY)/Libraries/gnustep-gui
+
+	: # usr/share/doc symlink
+	dh_link -p$(p_dev) usr/share/doc/$(p_com) usr/share/doc/$(p_dev)
+
+install-debug: build-debug
+	dh_testdir -p$(p_dbg)
+	dh_testroot -p$(p_dbg)
+	dh_prep -p$(p_dbg)
+	dh_installdirs -p$(p_dbg)
+
+	: # Doc symlink
+	dh_link -p$(p_dbg) usr/share/doc/$(p_com) usr/share/doc/$(p_dbg)
+
+
+# Build architecture-independent files here.
+binary-indep: control-file build-indep install-indep
+	dh_testdir -i
+	dh_testroot -i
+	dh_installchangelogs -p$(p_doc) ChangeLog
+	dh_installdocs -p$(p_doc) ANNOUNCE BUGS NEWS README
+	dh_installchangelogs -p$(p_com) ChangeLog
+	dh_installdocs -p$(p_com) ANNOUNCE BUGS NEWS README
+	gsdh_gnustep -i
+
+# Install man pagees to gnustep-gui-common, and remove from gnustep-gui-doc.
+	for man in gclose gcloseall gopen make_services set_show_service; do \
+	  dh_installman -p$(p_com) Documentation/$$man.1; \
+	  rm -rf $(d_doc)/usr/share/man; \
+	done
+	dh_installman -p$(p_com) debian/say.1 debian/GSSpeechServer.1
+
+	: # remove empty directories, when all components are in place
+	for d in `find $(d_com) -depth -type d -empty 2>/dev/null`; do \
+	    case $$d in */usr/share/doc*|*/etc) continue; esac; \
+	    while rmdir $$d 2> /dev/null; do d=`dirname $$d`; done; \
+	done
+
+	dh_compress -i
+	dh_fixperms -i
+	dh_installdeb -i
+	dh_gencontrol -i
+	dh_md5sums -i
+	dh_builddeb -i
+
+
+# Build architecture-dependent files here.
+binary-arch: control-file build-arch install-arch debian/libgnustep-gui$(sov_gui).lintian-overrides
+	dh_testdir -a
+	dh_testroot -a
+	gsdh_gnustep -a
+
+# Move images to /usr/share.
+	dh_installdirs -p$(p_run) usr/share/GNUstep/ColorPickers
+	for i in \
+	  $(d_run)/usr/lib/GNUstep/ColorPickers/{NamedPicker,StandardPicker,WheelPicker}.bundle/Resources/*.tiff; do \
+	  mv $$i $(d_run)/usr/share/GNUstep/ColorPickers \
+	  && dh_link -p$(p_run) \
+	    usr/share/GNUstep/ColorPickers/`basename $$i` \
+	    `echo $$i | sed 's|$(d_run)/||'`; \
+	done
+
+	: # remove empty directories, when all components are in place
+	for d in `find $(d_run) $(d_dev) $(d_dbg) -depth -type d -empty 2>/dev/null`; do \
+	    case $$d in */usr/share/doc*|*/etc) continue; esac; \
+	    while rmdir $$d 2> /dev/null; do d=`dirname $$d`; done; \
+	done
+
+	dh_lintian -a
+	dh_strip -a --dbg-package=libgnustep-gui$(sov_gui)-dbg
+
+	dh_compress -a
+	dh_fixperms -a
+
+	: # Calculate shlib dependencies for -runtime package separatly
+	dh_makeshlibs -p$(p_lib) -V
+	dh_installdeb -p$(p_run)
+	dh_shlibdeps -p$(p_run) -l$(d_lib)/$(GNUSTEP_SYSTEM_LIBRARIES)
+
+	: # Calculate shlib dependencies for other packages
+	dh_makeshlibs -p$(p_lib) \
+	    -V '$(p_lib) (>= $(v_gui)), gnustep-gui-runtime (>= $(v_gui)), gnustep-back$(sov_gui) (>= $(v_gui)), gnustep-gpbs (>= $(v_gui))'
+	dh_installdeb -a -N$(p_run)
+	dh_shlibdeps -a -N$(p_run) -l$(d_lib)/$(GNUSTEP_SYSTEM_LIBRARIES)
+
+	dh_gencontrol -a
+	dh_md5sums -a
+	dh_builddeb -a
+
+
+# Test that debian/control is up to date
+clean_files += debian/control.tmp
+test-control:
+	m4 \
+	    -DV_BASE='$(v_base)' \
+	    -DV_GUI='$(v_gui)' \
+	    -DSOV_GUI='$(sov_gui)' \
+	  debian/control.m4 | uniq > debian/control.tmp
+	diff debian/control debian/control.tmp
+
+
+clean: clean-patched unpatch
+
+clean-patched: test-control
+	dh_testdir
+	dh_testroot
+
+	: # Clean Doc
+
+#	rm -f Documentation/*.html
+#	rm -f Documentation/Gui/Gui.igsdoc
+#	rm -rf Documentation/Gui/Gui
+#	rm -f Documentation/Gui/*.html
+	rm -f Documentation/version.texi
+
+#	cd Documentation/Gui; \
+#	for f in `ls *.gsdoc`; do \
+#	    case $$f in DefaultsSummary.gsdoc|Gui.gsdoc|Introduction.gsdoc\
+#		|LanguageSetup.gsdoc|NSBundleAdditions.gsdoc\
+#		|NSMutableAttributedStringAdditions.gsdoc\
+#		|NSCoderAdditions.gsdoc|NSMutableParagraphStyle.gsdoc\
+#		|NSStringAdditions.gsdoc) continue; esac; \
+#	  rm -f $$f; \
+#	done
+
+#	rm -f Documentation/GuiAdditions/Functions.gsdoc \
+#		Documentation/GuiAdditions/TypesAndConstants.gsdoc
+
+#	rm -f Documentation/GuiAdditions/*.html
+#	rm -f Documentation/GuiAdditions/*TOC.gsdoc
+#	rm -f Documentation/GuiAdditions/GS*.gsdoc
+#	rm -f Documentation/GuiAdditions/*.igsdoc
+
+#	if config.make does not exist, then we assume that we don't need to
+#	make clean
+	if [ -e config.make ]; then \
+	  $(MAKE) -C Documentation clean; \
+	  $(MAKE) -C Documentation distclean; \
+	  $(MAKE) clean; \
+	  $(MAKE) distclean; \
+	fi
+
+	#rm -f Tools/obj Source/obj Model/obj
+	rm -rf Tools/*.service
+
+	rm -f Headers/gnustep/gui/{config,GSVersion}.h
+	rm -f Headers/Additions/GNUstepGUI/GSVersion.h
+
+#	rm -f debian/gnustep-gui[0-9]*.{pre,post}{inst,rm}
+#	rm -f debian/gnustep-gui[0-9]*.{conffiles,init,shlibs}
+
+	rm -f {config,gui}.make
+
+	rm -f Source/Gui.{gsdoc,stamp}
+	rm -f Source/.igsdoc
+	rm -f Source/Info-gnustep.plist
+#	rm -f Source/libgnustep-gui.def
+
+#	-find -name '*.bundle' | xargs rm -rf
+#	rm -f TextConverters/RTF/obj ColorPickers/obj
+
+	rm -f $(clean_files)
+
+	dh_clean
+
+upstream: build-shared
+
+	$(MAKE) install doc=no DESTDIR=$(CURDIR)/debian/upstream
+
+
+binary: binary-indep binary-arch
+.PHONY: control-file build build-indep build-arch clean install install-indep install-arch binary-indep binary-arch binary version build-shared build-static bulid-debug config

@@ -1,0 +1,9 @@
+Document: gnustep-gui-additions
+Title: GNUstep GUI Library API Additions
+Author: Richard Frith-Macdonald
+Abstract: GNU Extensions to the GNUstep GUI Library
+Section: Programming/Objective-C
+
+Format: HTML
+Index: /usr/share/GNUstep/Documentation/Developer/Gui/Additions/index.html
+Files: /usr/share/GNUstep/Documentation/Developer/Gui/Additions/*.html
