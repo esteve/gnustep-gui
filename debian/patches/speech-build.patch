@@ -1,0 +1,12 @@
+Index: gnustep-gui/Tools/speech/GNUmakefile
+===================================================================
+--- gnustep-gui.orig/Tools/speech/GNUmakefile	2012-11-09 12:12:22.732226098 +0000
++++ gnustep-gui/Tools/speech/GNUmakefile	2012-11-09 12:21:43.408362685 +0000
+@@ -28,6 +28,6 @@
+ 	-lflite_usenglish -lflite_cmulex -lflite
+ endif
+ 
+-GSSpeechServer_OBJCFLAGS = -std=c99 -g -Werror
++GSSpeechServer_OBJCFLAGS = -std=c99
+ 
+ include $(GNUSTEP_MAKEFILES)/application.make
