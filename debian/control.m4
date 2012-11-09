@@ -18,7 +18,9 @@ Build-Depends: debhelper (>= 7),
 	       libcups2-dev,
 	       libao-dev,
 	       libsndfile1-dev,
-	       flite1-dev
+	       flite1-dev,
+	       libobjc4-dev,
+	       clang
 Build-Depends-Indep: texinfo,
 		     texi2html,
 		     texlive-base,

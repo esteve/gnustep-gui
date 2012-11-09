@@ -52,9 +52,8 @@ include /usr/share/GNUstep/debian/config.mk
 export GNUSTEP_MAKEFILES := /usr/share/GNUstep/Makefiles
 export GNUSTEP_INSTALLATION_DOMAIN := SYSTEM
 
-# Compiler
-CC	:= $(shell sed -n -e '/^CC[ 	]*=/s,.*= *\(.*\),\1,p' \
-		/$(GS_MAKE_DIR)/config.make)
+# Compiler. Force use of clang.
+CC = clang
 
 LDFLAGS := -Wl,-z,defs -Wl,--as-needed
 
